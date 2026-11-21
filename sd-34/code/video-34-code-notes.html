@@ -1,0 +1,312 @@
+<title>Active-Active Code Notes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>/* Layout: one reading column; the diagram and code break wider in their own scroll boxes. Dark-first like the videos. */
+:root{--bg:#0b1020;--panel:#111a33;--line:#26324f;--fg:#e8ecf6;--muted:#9aa6c3;--accent:#fbbf24;--ok:#4ade80;--code-bg:#0e1529;
+--display:"Space Grotesk",system-ui,sans-serif;--body:Inter,system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+--k:#c4b5fd;--s:#86efac;--c:#7c88a8;--n:#fbbf24;--f:#7dd3fc;color-scheme:dark}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f6f7fb;--panel:#ffffff;--line:#d7dcea;--fg:#141a2b;--muted:#515b76;--accent:#b45309;--ok:#15803d;--code-bg:#0e1529;color-scheme:light}}
+:root[data-theme="light"]{--bg:#f6f7fb;--panel:#ffffff;--line:#d7dcea;--fg:#141a2b;--muted:#515b76;--accent:#b45309;--ok:#15803d;--code-bg:#0e1529;color-scheme:light}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.6}
+.wrap{max-width:1080px;margin:0 auto;padding-block:40px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:48px}
+.top{display:grid;gap:12px;max-width:72ch}
+.eyebrow{margin:0;font-family:var(--mono);font-size:13px;letter-spacing:.04em;color:var(--accent)}
+h1{margin:0;font-family:var(--display);font-size:clamp(28px,4.4vw,44px);line-height:1.15;text-wrap:balance}
+h2{margin:0 0 16px;font-family:var(--display);font-size:24px}
+h3{margin:24px 0 8px;font-family:var(--display);font-size:18px}
+.lede{margin:0;color:var(--muted)}
+code{font-family:var(--mono);font-size:.92em}
+.jump{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.jump a{font-family:var(--mono);font-size:13px;color:var(--fg);text-decoration:none;border:1px solid var(--line);padding:6px 12px;border-radius:999px}
+.jump a:hover,.jump a:focus-visible{border-color:var(--accent);outline:none}
+section{min-width:0}
+.diagram{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#0b1020}
+.diagram svg{display:block;width:100%;min-width:900px;height:auto}
+.fails{margin:0;padding-left:20px;display:grid;gap:8px;max-width:80ch}
+.codehead{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between}
+.codehead h2{font-family:var(--mono);font-size:20px}
+button{font:600 14px var(--body);color:#0b1020;background:var(--accent);border:0;border-radius:6px;padding:8px 14px;cursor:pointer}
+button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+pre{margin:0;overflow-x:auto;border-radius:10px;padding:20px;background:var(--code-bg);color:#e8ecf6;font-family:var(--mono);font-size:14px;line-height:1.55;border:1px solid var(--line)}
+pre code{font-size:inherit}
+.out{color:#cfe9d7}
+.hljs-keyword,.hljs-built_in{color:var(--k)} .hljs-string{color:var(--s)} .hljs-comment{color:var(--c);font-style:italic}
+.hljs-number,.hljs-literal{color:var(--n)} .hljs-title,.hljs-title.function_,.hljs-title.class_{color:var(--f)}
+.foot{color:var(--muted);font-size:14px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+<main class="wrap">
+<header class="top">
+<p class="eyebrow">Decode System Design · Video 34 · Multi-Region Active-Active</p>
+<h1>What Happens When Users in Mumbai and London Write at Once?</h1>
+<p class="lede">The diagram and the full Python code from the video. Every snippet on screen comes from this file. Copy it and run it with <code>python3 active_active.py</code>; it needs only the standard library.</p>
+<nav class="jump"><a href="#diagram">Architecture</a><a href="#code">Code</a><a href="#output">Output</a></nav>
+</header>
+<section id="diagram">
+<h2>Architecture</h2>
+<div class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960" role="img" aria-label="Architecture" font-family="Inter, sans-serif" xmlns:c2pa="http://c2pa.org/manifest">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#cbd5e1"/></marker><marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f87171"/></marker><marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4ade80"/></marker><marker id="v" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#a78bfa"/></marker><marker id="y" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#fbbf24"/></marker></defs>
+<rect width="1600" height="960" fill="#0b1020"/>
+<text x="800" y="52" fill="#f8fafc" font-size="30" font-weight="700" text-anchor="middle">Multi-region active-active: Mumbai and London both take writes</text>
+<text x="800" y="84" fill="#94a3b8" font-size="18" font-weight="400" text-anchor="middle">Users reach the nearest region, write to their home region in a few ms, and changes cross the cable in the background.</text>
+<rect x="560" y="110" width="480" height="120" rx="12" fill="#111a33" stroke="#334155" stroke-width="2"/>
+<text x="800.0" y="138" fill="#f8fafc" font-size="18" font-weight="600" text-anchor="middle">Geo-routing</text>
+<text x="800.0" y="162" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">GeoDNS + EDNS client subnet (user's real area)</text>
+<text x="800.0" y="183" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">or anycast: one IP, BGP picks the nearest region</text>
+<text x="800.0" y="204" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">health check fails -&gt; stop returning it; TTL 60 s</text>
+<rect x="40" y="280" width="440" height="250" rx="12" fill="#2a2111" stroke="#f59e0b" stroke-width="2"/>
+<text x="260.0" y="308" fill="#fbbf24" font-size="18" font-weight="600" text-anchor="middle">Mumbai region</text>
+<text x="260.0" y="332" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">users: Aman, Kabir (home: Mumbai)</text>
+<text x="260.0" y="353" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">DB accepts writes, commit ~5 ms</text>
+<text x="260.0" y="374" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">change log -&gt; replicator ships origin: Mumbai only</text>
+<text x="260.0" y="395" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">applier: skips change IDs already applied</text>
+<text x="260.0" y="416" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">two zones: payment written to both</text>
+<text x="260.0" y="437" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">runs at most 50 % busy (2 regions)</text>
+<rect x="1120" y="280" width="440" height="250" rx="12" fill="#1d1633" stroke="#a78bfa" stroke-width="2"/>
+<text x="1340.0" y="308" fill="#c4b5fd" font-size="18" font-weight="600" text-anchor="middle">London region</text>
+<text x="1340.0" y="332" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">users: Sara (home: London)</text>
+<text x="1340.0" y="353" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">DB accepts writes, commit ~5 ms</text>
+<text x="1340.0" y="374" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">change log -&gt; replicator ships origin: London only</text>
+<text x="1340.0" y="395" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">applier: skips change IDs already applied</text>
+<text x="1340.0" y="416" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">two zones: payment written to both</text>
+<text x="1340.0" y="437" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">runs at most 50 % busy (2 regions)</text>
+<line x1="700" y1="230" x2="330" y2="276" stroke="#fbbf24" stroke-width="2" marker-end="url(#y)"/>
+<text x="480" y="245" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">Aman, Kabir</text>
+<line x1="900" y1="230" x2="1270" y2="276" stroke="#a78bfa" stroke-width="2" marker-end="url(#v)"/>
+<text x="1120" y="245" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">Sara</text>
+<line x1="484" y1="360" x2="1116" y2="360" stroke="#cbd5e1" stroke-width="2" marker-end="url(#a)"/>
+<text x="800.0" y="350" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">async replication: changes tagged origin + change ID</text>
+<line x1="1116" y1="400" x2="484" y2="400" stroke="#cbd5e1" stroke-width="2" marker-end="url(#a)"/>
+<text x="800.0" y="428" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">undersea cable ~12,000 km: 60 ms one way, 120 ms round trip (physics floor)</text>
+<rect x="560" y="450" width="480" height="120" rx="12" fill="#14281a" stroke="#4ade80" stroke-width="2"/>
+<text x="800.0" y="478" fill="#f8fafc" font-size="18" font-weight="600" text-anchor="middle">User table (copy in every region)</text>
+<text x="800.0" y="502" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">Sara: home London;  Kabir: home Mumbai</text>
+<text x="800.0" y="523" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">Sara travelling in Mumbai: writes forwarded to London</text>
+<text x="800.0" y="544" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">move home: pause, drain changes, flip, resume</text>
+<rect x="40" y="610" width="1520" height="190" rx="12" fill="#111a33" stroke="#334155" stroke-width="2"/>
+<text x="800" y="642" fill="#f8fafc" font-size="19" font-weight="700" text-anchor="middle">Data both regions write at once, and its solution</text>
+<text x="380" y="675" fill="#f8fafc" font-size="15" font-weight="600" text-anchor="middle">Family cart (Sara + Kabir)</text>
+<text x="1000" y="675" fill="#fbbf24" font-size="15" font-weight="400" text-anchor="middle">last write wins loses a write -&gt; merge operations: + charger, - headphones</text>
+<text x="380" y="700" fill="#f8fafc" font-size="15" font-weight="600" text-anchor="middle">Likes / views counters</text>
+<text x="1000" y="700" fill="#4ade80" font-size="15" font-weight="400" text-anchor="middle">one counter per region, total = sum (CRDT)</text>
+<text x="380" y="725" fill="#f8fafc" font-size="15" font-weight="600" text-anchor="middle">Last units of stock</text>
+<text x="1000" y="725" fill="#4ade80" font-size="15" font-weight="400" text-anchor="middle">single owner: stock quota per region</text>
+<text x="380" y="750" fill="#f8fafc" font-size="15" font-weight="600" text-anchor="middle">Unique username</text>
+<text x="1000" y="750" fill="#4ade80" font-size="15" font-weight="400" text-anchor="middle">single owner region; signup pays 120 ms once</text>
+<text x="380" y="775" fill="#f8fafc" font-size="15" font-weight="600" text-anchor="middle">Payment</text>
+<text x="1000" y="775" fill="#4ade80" font-size="15" font-weight="400" text-anchor="middle">only in the user's home region, written to two zones</text>
+<rect x="40" y="820" width="1520" height="110" rx="12" fill="#111a33" stroke="#334155" stroke-width="2"/>
+<text x="800" y="852" fill="#f8fafc" font-size="18" font-weight="700" text-anchor="middle">Built-in solutions and the region-down plan</text>
+<text x="800" y="882" fill="#cbd5e1" font-size="15" font-weight="400" text-anchor="middle">DynamoDB global tables: write in every region, last write wins.   Cassandra LOCAL_QUORUM: confirm inside your own region.</text>
+<text x="800" y="908" fill="#cbd5e1" font-size="15" font-weight="400" text-anchor="middle">Region down: geo-routing sends its users to the other region; its last unsent changes merge after it returns; 3 regions -&gt; each at most ~66 % busy.</text>
+</svg></div>
+<h3>What fails, and its solution</h3>
+<ul class="fails"><li><strong>Every London write crosses the cable (about 1 s checkout).</strong> Solution: active-active, commit in the user&#x27;s own region.</li><li><strong>Replicated changes loop back forever.</strong> Solution: origin tag on every change; change IDs for duplicate batches.</li><li><strong>Public resolver far from the user.</strong> Solution: EDNS client subnet; or anycast.</li><li><strong>Travelling user loses their own write.</strong> Solution: home region; forward writes there.</li><li><strong>Whole-cart last write wins drops a write.</strong> Solution: merge by data type (operations set; per-region counters, CRDT).</li><li><strong>Stock, usernames, payments must never conflict.</strong> Solution: single owner (stock quota per region, one owner region for usernames, payment only in the home region).</li><li><strong>Region down.</strong> Solution: geo-routing failover, zones for payments, capacity headroom (2 regions at most 50 % busy, 3 regions about 66 %).</li><li>Built in: DynamoDB global tables (write anywhere, last write wins); Cassandra LOCAL_QUORUM (confirm inside your own region).</li></ul>
+</section>
+<section id="code">
+<div class="codehead"><h2>active_active.py</h2><button id="copy-btn" type="button">Copy code</button></div>
+<pre class="code"><code id="code-src" class="language-python">&quot;&quot;&quot;
+Video 34: Multi-Region Active-Active (Decode System Design)
+Language: Python 3 (standard library only). Run: python3 active_active.py
+
+Two regions (Mumbai, London) both accept writes and replicate to each other.
+PROBLEM 1: replication with no origin tag -&gt; a change loops between regions forever.
+SOLUTION 1: tag each change with its origin region + a change ID; ship only your own
+            changes; apply each change ID once.
+PROBLEM 2: the family cart stored as ONE value with last write wins -&gt; a write is lost.
+SOLUTION 2: store the cart as operations (add/remove) and merge them; counters per region.
+&quot;&quot;&quot;
+import uuid
+
+# ---------------------------------------------------------------------------
+# PROBLEM 1: naive replication (no origin tag)
+# ---------------------------------------------------------------------------
+class NaiveRegion:
+    def __init__(self, name):
+        self.name, self.log, self.peer = name, [], None
+
+    def write(self, change):
+        self.log.append(change)          # every applied change lands in the log
+        self.peer.receive(change)        # ...and the replicator ships the whole log
+
+    def receive(self, change):
+        self.write(change)               # applying a remote change logs it again -&gt; ships back
+
+
+def naive_loop_demo():
+    mumbai, london = NaiveRegion(&quot;Mumbai&quot;), NaiveRegion(&quot;London&quot;)
+    mumbai.peer, london.peer = london, mumbai
+    try:
+        mumbai.write({&quot;key&quot;: &quot;price:headphones&quot;, &quot;value&quot;: 999})
+    except RecursionError:
+        print(&quot;PROBLEM 1: change bounced Mumbai &lt;-&gt; London until the stack blew up &quot;
+              f&quot;({len(mumbai.log)} copies in Mumbai&#x27;s log)&quot;)
+
+
+# ---------------------------------------------------------------------------
+# SOLUTION 1: origin tag + change ID
+# ---------------------------------------------------------------------------
+class Region:
+    def __init__(self, name):
+        self.name = name
+        self.data = {}
+        self.log = []                    # change log (what the replicator reads)
+        self.applied = set()             # change IDs already applied (dedupe)
+        self.peers = []
+
+    def local_write(self, key, value):
+        change = {&quot;id&quot;: str(uuid.uuid4()), &quot;origin&quot;: self.name, &quot;key&quot;: key, &quot;value&quot;: value}
+        self._apply(change)
+        return change
+
+    def _apply(self, change):
+        if change[&quot;id&quot;] in self.applied:          # same batch delivered twice -&gt; skip
+            return
+        self.applied.add(change[&quot;id&quot;])
+        self.data[change[&quot;key&quot;]] = change[&quot;value&quot;]
+        self.log.append(change)
+
+    def ship(self):
+        &quot;&quot;&quot;Background replicator: send ONLY changes that started here.&quot;&quot;&quot;
+        own = [c for c in self.log if c[&quot;origin&quot;] == self.name]
+        for peer in self.peers:
+            for c in own:
+                peer._apply(c)
+            for c in own:                          # network resends the batch: harmless
+                peer._apply(c)
+
+
+def origin_tag_demo():
+    mumbai, london = Region(&quot;Mumbai&quot;), Region(&quot;London&quot;)
+    mumbai.peers, london.peers = [london], [mumbai]
+    mumbai.local_write(&quot;price:headphones&quot;, 999)
+    london.local_write(&quot;cart:sara&quot;, [&quot;shoes&quot;])
+    for _ in range(3):                             # replicate a few rounds
+        mumbai.ship(); london.ship()
+    print(&quot;SOLUTION 1: Mumbai log size&quot;, len(mumbai.log), &quot;| London log size&quot;, len(london.log),
+          &quot;| same data:&quot;, mumbai.data == london.data)
+
+
+# ---------------------------------------------------------------------------
+# PROBLEM 2: family cart as one value, last write wins
+# ---------------------------------------------------------------------------
+def lww_cart_demo():
+    start = {&quot;headphones&quot;, &quot;phone case&quot;}
+    # Same second: Sara (London) removes headphones, Kabir (Mumbai) adds a charger.
+    sara_cart = (start - {&quot;headphones&quot;}, 10_000_000_500)        # (value, timestamp in ms)
+    kabir_cart = (start | {&quot;charger&quot;}, 10_000_000_600)          # Mumbai clock is ahead
+    winner = max(sara_cart, kabir_cart, key=lambda v: v[1])
+    print(&quot;PROBLEM 2: last write wins keeps&quot;, sorted(winner[0]),
+          &quot;-&gt; Sara&#x27;s removal is lost&quot;)
+
+
+# ---------------------------------------------------------------------------
+# SOLUTION 2: cart as operations (add-wins set) + counter per region
+# ---------------------------------------------------------------------------
+class OpCart:
+    &quot;&quot;&quot;Each add gets a unique tag; a remove deletes only the tags it has seen.&quot;&quot;&quot;
+    def __init__(self):
+        self.adds = {}      # tag -&gt; item
+        self.removed = set()
+
+    def add(self, item):
+        tag = str(uuid.uuid4())
+        self.adds[tag] = item
+        return (&quot;add&quot;, tag, item)
+
+    def remove(self, item):
+        tags = {t for t, i in self.adds.items() if i == item and t not in self.removed}
+        self.removed |= tags
+        return (&quot;remove&quot;, tags, item)
+
+    def apply(self, op):
+        kind, tag, item = op
+        if kind == &quot;add&quot;:
+            self.adds[tag] = item
+        else:
+            self.removed |= tag
+
+    def items(self):
+        return sorted({i for t, i in self.adds.items() if t not in self.removed})
+
+
+def merge_cart_demo():
+    london, mumbai = OpCart(), OpCart()
+    for item in (&quot;headphones&quot;, &quot;phone case&quot;):     # both regions start with the same cart
+        op = london.add(item); mumbai.apply(op)
+    op_sara = london.remove(&quot;headphones&quot;)         # London
+    op_kabir = mumbai.add(&quot;charger&quot;)              # Mumbai, same second
+    london.apply(op_kabir); mumbai.apply(op_sara) # replication, any order
+    print(&quot;SOLUTION 2: London&quot;, london.items(), &quot;| Mumbai&quot;, mumbai.items())
+
+
+class RegionCounter:
+    &quot;&quot;&quot;Likes: each region counts its own; total = sum. Nothing is overwritten.&quot;&quot;&quot;
+    def __init__(self):
+        self.per_region = {}
+
+    def like(self, region, n=1):
+        self.per_region[region] = self.per_region.get(region, 0) + n
+
+    def merge(self, other):
+        for r, v in other.per_region.items():
+            self.per_region[r] = max(self.per_region.get(r, 0), v)
+
+    def total(self):
+        return sum(self.per_region.values())
+
+
+def counter_demo():
+    london, mumbai = RegionCounter(), RegionCounter()
+    london.like(&quot;London&quot;, 40); mumbai.like(&quot;Mumbai&quot;, 60)
+    london.merge(mumbai); mumbai.merge(london)
+    print(&quot;SOLUTION 2b: likes London =&quot;, london.total(), &quot;| Mumbai =&quot;, mumbai.total())
+
+
+# ---------------------------------------------------------------------------
+# Home region routing: a travelling user&#x27;s writes go to her home region
+# ---------------------------------------------------------------------------
+HOME = {&quot;sara&quot;: &quot;London&quot;, &quot;kabir&quot;: &quot;Mumbai&quot;}
+
+def route_write(user, arrived_at):
+    home = HOME[user]
+    if home == arrived_at:
+        return f&quot;{user}: commit locally in {home} (~5 ms)&quot;
+    return f&quot;{user}: arrived at {arrived_at}, forward to home {home} (+120 ms)&quot;
+
+
+if __name__ == &quot;__main__&quot;:
+    naive_loop_demo()
+    origin_tag_demo()
+    lww_cart_demo()
+    merge_cart_demo()
+    counter_demo()
+    print(route_write(&quot;sara&quot;, &quot;London&quot;))
+    print(route_write(&quot;sara&quot;, &quot;Mumbai&quot;))
+</code></pre>
+</section>
+<section id="output">
+<h2>Output when you run it</h2>
+<pre class="out"><code>PROBLEM 1: change bounced Mumbai &lt;-&gt; London until the stack blew up (250 copies in Mumbai&#x27;s log)
+SOLUTION 1: Mumbai log size 2 | London log size 2 | same data: True
+PROBLEM 2: last write wins keeps [&#x27;charger&#x27;, &#x27;headphones&#x27;, &#x27;phone case&#x27;] -&gt; Sara&#x27;s removal is lost
+SOLUTION 2: London [&#x27;charger&#x27;, &#x27;phone case&#x27;] | Mumbai [&#x27;charger&#x27;, &#x27;phone case&#x27;]
+SOLUTION 2b: likes London = 100 | Mumbai = 100
+sara: commit locally in London (~5 ms)
+sara: arrived at Mumbai, forward to home London (+120 ms)
+</code></pre>
+</section>
+<footer class="foot">From the Hindi series Decode System Design on YouTube, channel @DecodeWithVipin1306.</footer>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script>
+try { hljs.highlightElement(document.getElementById('code-src')); } catch (e) {}
+const btn=document.getElementById('copy-btn');
+btn.addEventListener('click',()=>{
+  const text=document.getElementById('code-src').innerText;
+  const done=()=>{btn.textContent='Copied';setTimeout(()=>btn.textContent='Copy code',1600);};
+  const fallback=()=>{const r=document.createRange();r.selectNodeContents(document.getElementById('code-src'));const s=getSelection();s.removeAllRanges();s.addRange(r);btn.textContent='Selected, press Ctrl+C';};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,fallback);}else fallback();
+});
+</script>
