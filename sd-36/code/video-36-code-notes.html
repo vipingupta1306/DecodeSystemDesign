@@ -1,0 +1,295 @@
+<title>Logical Clocks Code Notes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>/* Layout: one reading column; the diagram and code break wider in their own scroll boxes. Dark-first like the videos. */
+:root{--bg:#0b1020;--panel:#111a33;--line:#26324f;--fg:#e8ecf6;--muted:#9aa6c3;--accent:#fbbf24;--ok:#4ade80;--code-bg:#0e1529;
+--display:"Space Grotesk",system-ui,sans-serif;--body:Inter,system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+--k:#c4b5fd;--s:#86efac;--c:#7c88a8;--n:#fbbf24;--f:#7dd3fc;color-scheme:dark}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f6f7fb;--panel:#ffffff;--line:#d7dcea;--fg:#141a2b;--muted:#515b76;--accent:#b45309;--ok:#15803d;--code-bg:#0e1529;color-scheme:light}}
+:root[data-theme="light"]{--bg:#f6f7fb;--panel:#ffffff;--line:#d7dcea;--fg:#141a2b;--muted:#515b76;--accent:#b45309;--ok:#15803d;--code-bg:#0e1529;color-scheme:light}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.6}
+.wrap{max-width:1080px;margin:0 auto;padding-block:40px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:48px}
+.top{display:grid;gap:12px;max-width:72ch}
+.eyebrow{margin:0;font-family:var(--mono);font-size:13px;letter-spacing:.04em;color:var(--accent)}
+h1{margin:0;font-family:var(--display);font-size:clamp(28px,4.4vw,44px);line-height:1.15;text-wrap:balance}
+h2{margin:0 0 16px;font-family:var(--display);font-size:24px}
+h3{margin:24px 0 8px;font-family:var(--display);font-size:18px}
+.lede{margin:0;color:var(--muted)}
+code{font-family:var(--mono);font-size:.92em}
+.jump{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.jump a{font-family:var(--mono);font-size:13px;color:var(--fg);text-decoration:none;border:1px solid var(--line);padding:6px 12px;border-radius:999px}
+.jump a:hover,.jump a:focus-visible{border-color:var(--accent);outline:none}
+section{min-width:0}
+.diagram{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#0b1020}
+.diagram svg{display:block;width:100%;min-width:900px;height:auto}
+.fails{margin:0;padding-left:20px;display:grid;gap:8px;max-width:80ch}
+.codehead{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between}
+.codehead h2{font-family:var(--mono);font-size:20px}
+button{font:600 14px var(--body);color:#0b1020;background:var(--accent);border:0;border-radius:6px;padding:8px 14px;cursor:pointer}
+button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+pre{margin:0;overflow-x:auto;border-radius:10px;padding:20px;background:var(--code-bg);color:#e8ecf6;font-family:var(--mono);font-size:14px;line-height:1.55;border:1px solid var(--line)}
+pre code{font-size:inherit}
+.out{color:#cfe9d7}
+.hljs-keyword,.hljs-built_in{color:var(--k)} .hljs-string{color:var(--s)} .hljs-comment{color:var(--c);font-style:italic}
+.hljs-number,.hljs-literal{color:var(--n)} .hljs-title,.hljs-title.function_,.hljs-title.class_{color:var(--f)}
+.foot{color:var(--muted);font-size:14px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+<main class="wrap">
+<header class="top">
+<p class="eyebrow">Decode System Design · Video 36 · Lamport &amp; Vector Clocks</p>
+<h1>How Do You Know Which Event Happened First?</h1>
+<p class="lede">The diagram and the full Python code from the video. Every snippet on screen comes from this file. Copy it and run it with <code>python3 logical_clocks.py</code>; it needs only the standard library.</p>
+<nav class="jump"><a href="#diagram">Concept diagram</a><a href="#code">Code</a><a href="#output">Output</a></nav>
+</header>
+<section id="diagram">
+<h2>Concept diagram</h2>
+<div class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960" role="img" aria-label="Concept diagram" font-family="Inter, sans-serif" xmlns:c2pa="http://c2pa.org/manifest">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#cbd5e1"/></marker><marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f87171"/></marker><marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4ade80"/></marker><marker id="v" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#a78bfa"/></marker><marker id="y" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#fbbf24"/></marker></defs>
+<rect width="1600" height="960" fill="#0b1020"/>
+<text x="800" y="52" fill="#f8fafc" font-size="30" font-weight="700" text-anchor="middle">Lamport and vector clocks: ordering events without trusting time</text>
+<text x="800" y="84" fill="#94a3b8" font-size="18" font-weight="400" text-anchor="middle">Order, payment and warehouse servers; dots are events, arrows are messages. Each event carries a Lamport number and a vector [O, P, W].</text>
+<line x1="180" y1="150" x2="180" y2="600" stroke="#334155" stroke-width="3"/>
+<text x="180" y="138" fill="#f8fafc" font-size="18" font-weight="600" text-anchor="middle">Order server</text>
+<line x1="500" y1="150" x2="500" y2="600" stroke="#334155" stroke-width="3"/>
+<text x="500" y="138" fill="#f8fafc" font-size="18" font-weight="600" text-anchor="middle">Payment server</text>
+<line x1="820" y1="150" x2="820" y2="600" stroke="#334155" stroke-width="3"/>
+<text x="820" y="138" fill="#f8fafc" font-size="18" font-weight="600" text-anchor="middle">Warehouse server</text>
+<line x1="188" y1="194" x2="810" y2="256" stroke="#cbd5e1" stroke-width="2" marker-end="url(#a)"/>
+<text x="640" y="226" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">pack it</text>
+<line x1="188" y1="324" x2="492" y2="416" stroke="#cbd5e1" stroke-width="2" marker-end="url(#a)"/>
+<text x="330" y="430" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">refund please: 5 / [2,0,0]</text>
+<rect x="192" y="168" width="250" height="46" rx="6" fill="#0b1020"/>
+<circle cx="180" cy="190" r="9" fill="#fbbf24"/>
+<text x="198" y="186" fill="#f8fafc" font-size="15" font-weight="600" text-anchor="start">order placed</text>
+<text x="198" y="206" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="start">L 1   [1, 0, 0]</text>
+<rect x="832" y="238" width="250" height="46" rx="6" fill="#0b1020"/>
+<circle cx="820" cy="260" r="9" fill="#a78bfa"/>
+<text x="838" y="256" fill="#f8fafc" font-size="15" font-weight="600" text-anchor="start">receive 'pack it'</text>
+<text x="838" y="276" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="start">L 2   [1, 0, 1]</text>
+<rect x="832" y="338" width="250" height="46" rx="6" fill="#0b1020"/>
+<circle cx="820" cy="360" r="9" fill="#a78bfa"/>
+<text x="838" y="356" fill="#f8fafc" font-size="15" font-weight="600" text-anchor="start">packing slip printed</text>
+<text x="838" y="376" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="start">L 3   [1, 0, 2]</text>
+<rect x="192" y="298" width="250" height="46" rx="6" fill="#0b1020"/>
+<circle cx="180" cy="320" r="9" fill="#fbbf24"/>
+<text x="198" y="316" fill="#f8fafc" font-size="15" font-weight="600" text-anchor="start">cancel</text>
+<text x="198" y="336" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="start">L 5 (was 4)   [2, 0, 0]</text>
+<rect x="512" y="398" width="250" height="46" rx="6" fill="#0b1020"/>
+<circle cx="500" cy="420" r="9" fill="#38bdf8"/>
+<text x="518" y="416" fill="#f8fafc" font-size="15" font-weight="600" text-anchor="start">receive 'refund'</text>
+<text x="518" y="436" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="start">L 6 (was 2)   [2, 1, 0]</text>
+<rect x="512" y="498" width="250" height="46" rx="6" fill="#0b1020"/>
+<circle cx="500" cy="520" r="9" fill="#38bdf8"/>
+<text x="518" y="516" fill="#f8fafc" font-size="15" font-weight="600" text-anchor="start">refund</text>
+<text x="518" y="536" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="start">L 7   [2, 2, 0]</text>
+<rect x="1120" y="130" width="440" height="220" rx="12" fill="#111a33" stroke="#334155" stroke-width="2"/>
+<text x="1340.0" y="158" fill="#f8fafc" font-size="18" font-weight="600" text-anchor="middle">Rules</text>
+<text x="1340.0" y="182" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">Lamport: +1 before every event;</text>
+<text x="1340.0" y="203" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">send the counter; on receive max(mine, got) + 1</text>
+<text x="1340.0" y="224" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">Vector: +1 on my own entry;</text>
+<text x="1340.0" y="245" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">send the whole vector;</text>
+<text x="1340.0" y="266" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">on receive entry-wise max, then +1 own</text>
+<text x="1340.0" y="287" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">Ties in Lamport: break by server ID</text>
+<rect x="1120" y="370" width="440" height="230" rx="12" fill="#14281a" stroke="#4ade80" stroke-width="2"/>
+<text x="1340.0" y="398" fill="#86efac" font-size="18" font-weight="600" text-anchor="middle">Compare two vectors</text>
+<text x="1340.0" y="422" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">all &lt;= and one &lt;  -&gt;  before</text>
+<text x="1340.0" y="443" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">all &gt;= and one &gt;  -&gt;  after</text>
+<text x="1340.0" y="464" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">mixed  -&gt;  concurrent</text>
+<text x="1340.0" y="485" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">cancel [2,0,0] vs refund [2,2,0]: before</text>
+<text x="1340.0" y="506" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">refund [2,2,0] vs slip [1,0,2]: concurrent</text>
+<text x="1340.0" y="527" fill="#94a3b8" font-size="14" font-weight="400" text-anchor="middle">Lamport 3 &lt; 7 but slip is NOT before refund</text>
+<rect x="40" y="640" width="1520" height="140" rx="12" fill="#111a33" stroke="#334155" stroke-width="2"/>
+<text x="800" y="672" fill="#f8fafc" font-size="19" font-weight="700" text-anchor="middle">Version vectors on the family cart (one entry per replica: Mumbai, London)</text>
+<text x="800" y="706" fill="#cbd5e1" font-size="15" font-weight="400" text-anchor="middle">start [3, 2]  -&gt;  Kabir in Mumbai + charger [4, 2]   |   Sara in London - headphones [3, 3]</text>
+<text x="800" y="734" fill="#4ade80" font-size="15" font-weight="400" text-anchor="middle">[4, 2] vs [3, 3]: concurrent -&gt; keep both as siblings, merge: charger, no headphones -&gt; [5, 3]</text>
+<text x="800" y="760" fill="#94a3b8" font-size="15" font-weight="400" text-anchor="middle">[4, 2] vs [3, 2]: before -&gt; the newer version simply replaces the older one</text>
+<rect x="40" y="800" width="1520" height="130" rx="12" fill="#111a33" stroke="#334155" stroke-width="2"/>
+<text x="800" y="832" fill="#f8fafc" font-size="18" font-weight="700" text-anchor="middle">What fails, and its solution</text>
+<text x="800" y="862" fill="#cbd5e1" font-size="15" font-weight="400" text-anchor="middle">Logs sorted by wall clock put the refund 2 ms before the cancel -&gt; Lamport or vector clocks order by cause.</text>
+<text x="800" y="888" fill="#cbd5e1" font-size="15" font-weight="400" text-anchor="middle">Lamport cannot see concurrent writes -&gt; vector clocks / version vectors (Riak siblings, Amazon Dynamo cart).</text>
+<text x="800" y="914" fill="#cbd5e1" font-size="15" font-weight="400" text-anchor="middle">Vector grows with clients -&gt; one entry per replica, prune old entries (Dynamo: 10), or hybrid logical clocks (CockroachDB, MongoDB).</text>
+</svg></div>
+<h3>What fails, and its solution</h3>
+<ul class="fails"><li><strong>Logs sorted by wall clock show the refund 2 ms before the cancel.</strong> Solution: order by Lamport number or vector clock (cancel 5 before refund 7; [2,0,0] before [2,2,0]).</li><li><strong>Lamport cannot detect concurrent writes</strong> (slip L 3 &lt; refund L 7, yet they are concurrent). Solution: vector clocks; [2,2,0] vs [1,0,2] is mixed, so concurrent.</li><li><strong>Concurrent cart writes lost by last write wins.</strong> Solution: version vectors per replica: [4,2] vs [3,3] is concurrent, keep both as siblings, merge (charger, no headphones), new version [5,3]. Riak returns siblings to the app; the Amazon Dynamo cart worked this way.</li><li><strong>Vector grows with every client.</strong> Solution: one entry per replica, prune the oldest entries (Dynamo: above 10; risk is only an extra merge), or hybrid logical clocks (wall time + small counter; CockroachDB, MongoDB).</li></ul>
+</section>
+<section id="code">
+<div class="codehead"><h2>logical_clocks.py</h2><button id="copy-btn" type="button">Copy code</button></div>
+<pre class="code"><code id="code-src" class="language-python">&quot;&quot;&quot;
+Video 36: Lamport &amp; Vector Clocks (Decode System Design)
+Language: Python 3 (standard library only). Run: python3 logical_clocks.py
+
+PROBLEM:  logs sorted by wall-clock time show the refund 2 ms BEFORE the cancel that caused it.
+SOLUTION 1: Lamport clock -&gt; cause always gets a smaller number.
+SOLUTION 2: vector clock -&gt; also tells &quot;before&quot;, &quot;after&quot; or &quot;concurrent&quot;.
+SOLUTION 3: version vectors on a replicated cart -&gt; detect concurrent writes and merge.
+&quot;&quot;&quot;
+
+# ---------------------------------------------------------------------------
+# PROBLEM: sort by wall clock (payment server&#x27;s clock is 2 ms behind)
+# ---------------------------------------------------------------------------
+def wall_clock_problem():
+    logs = [(&quot;10:00:00.010&quot;, &quot;order&quot;, &quot;cancel&quot;),
+            (&quot;10:00:00.008&quot;, &quot;payment&quot;, &quot;refund&quot;)]        # happened AFTER the cancel
+    for ts, server, event in sorted(logs):
+        print(f&quot;PROBLEM  {ts} {server:8} {event}&quot;)
+
+
+# ---------------------------------------------------------------------------
+# SOLUTION 1: Lamport clock
+# ---------------------------------------------------------------------------
+class LamportClock:
+    def __init__(self, name, start=0):
+        self.name, self.counter = name, start
+
+    def event(self):                       # rule 1: +1 before every event
+        self.counter += 1
+        return self.counter
+
+    def send(self):                        # rule 2: the message carries the counter
+        return self.event()
+
+    def receive(self, msg_counter):        # rule 3: max(mine, received) + 1
+        self.counter = max(self.counter, msg_counter) + 1
+        return self.counter
+
+
+def lamport_demo():
+    order, payment = LamportClock(&quot;order&quot;, start=4), LamportClock(&quot;payment&quot;, start=2)
+    cancel = order.send()                  # cancel + &quot;refund please&quot; message -&gt; 5
+    payment.receive(cancel)                # max(2, 5) + 1 -&gt; 6
+    refund = payment.event()               # -&gt; 7
+    log = sorted([(refund, &quot;payment&quot;, &quot;refund&quot;), (cancel, &quot;order&quot;, &quot;cancel&quot;)])
+    # ties are broken by server name, so every server sorts the same way
+    for counter, server, event in log:
+        print(f&quot;LAMPORT  {counter} {server:8} {event}&quot;)
+
+
+# ---------------------------------------------------------------------------
+# SOLUTION 2: vector clock
+# ---------------------------------------------------------------------------
+SERVERS = (&quot;order&quot;, &quot;payment&quot;, &quot;warehouse&quot;)
+
+class VectorClock:
+    def __init__(self, me):
+        self.me = me
+        self.v = {s: 0 for s in SERVERS}
+
+    def event(self):                       # own event: +1 on my own entry
+        self.v[self.me] += 1
+        return dict(self.v)
+
+    def send(self):                        # send the whole vector
+        return self.event()
+
+    def receive(self, other):              # entry-wise max, then +1 my own
+        for s in SERVERS:
+            self.v[s] = max(self.v[s], other[s])
+        return self.event()
+
+
+def compare(a, b):
+    &quot;&quot;&quot;&#x27;before&#x27;, &#x27;after&#x27;, &#x27;equal&#x27; or &#x27;concurrent&#x27;.&quot;&quot;&quot;
+    a_le_b = all(a[s] &lt;= b[s] for s in SERVERS)
+    b_le_a = all(b[s] &lt;= a[s] for s in SERVERS)
+    if a_le_b and b_le_a:
+        return &quot;equal&quot;
+    if a_le_b:
+        return &quot;before&quot;
+    if b_le_a:
+        return &quot;after&quot;
+    return &quot;concurrent&quot;
+
+
+def fmt(v):
+    return &quot;[&quot; + &quot;, &quot;.join(str(v[s]) for s in SERVERS) + &quot;]&quot;
+
+
+def vector_demo():
+    order, payment, warehouse = (VectorClock(s) for s in SERVERS)
+    placed = order.send()                  # [1, 0, 0] &quot;pack it&quot; -&gt; warehouse
+    warehouse.receive(placed)              # [1, 0, 1]
+    slip = warehouse.event()               # [1, 0, 2]
+    cancel = order.send()                  # [2, 0, 0] &quot;refund&quot; -&gt; payment
+    payment.receive(cancel)                # [2, 1, 0]
+    refund = payment.event()               # [2, 2, 0]
+    print(f&quot;VECTOR   cancel {fmt(cancel)} vs refund {fmt(refund)}: {compare(cancel, refund)}&quot;)
+    print(f&quot;VECTOR   refund {fmt(refund)} vs slip {fmt(slip)}: {compare(refund, slip)}&quot;)
+    if compare(slip, cancel) == &quot;concurrent&quot;:
+        print(&quot;VECTOR   slip is concurrent with cancel -&gt; check order state before shipping&quot;)
+
+
+# ---------------------------------------------------------------------------
+# SOLUTION 3: version vectors on the family cart (per replica, not per client)
+# ---------------------------------------------------------------------------
+REPLICAS = (&quot;mumbai&quot;, &quot;london&quot;)
+
+def vv_compare(a, b):
+    a_le_b = all(a[r] &lt;= b[r] for r in REPLICAS)
+    b_le_a = all(b[r] &lt;= a[r] for r in REPLICAS)
+    if a_le_b and b_le_a:
+        return &quot;equal&quot;
+    return &quot;before&quot; if a_le_b else &quot;after&quot; if b_le_a else &quot;concurrent&quot;
+
+
+def write(version, replica, items):
+    vv = dict(version[&quot;vv&quot;]); vv[replica] += 1
+    return {&quot;vv&quot;: vv, &quot;items&quot;: set(items)}
+
+
+def reconcile(a, b, replica, merge):
+    rel = vv_compare(a[&quot;vv&quot;], b[&quot;vv&quot;])
+    if rel in (&quot;before&quot;, &quot;equal&quot;):
+        return b                              # newer simply replaces
+    if rel == &quot;after&quot;:
+        return a
+    # concurrent: keep both as siblings, merge, then step past both
+    merged_vv = {r: max(a[&quot;vv&quot;][r], b[&quot;vv&quot;][r]) for r in REPLICAS}
+    merged_vv[replica] += 1
+    return {&quot;vv&quot;: merged_vv, &quot;items&quot;: merge(a[&quot;items&quot;], b[&quot;items&quot;])}
+
+
+def cart_demo():
+    base = {&quot;vv&quot;: {&quot;mumbai&quot;: 3, &quot;london&quot;: 2}, &quot;items&quot;: {&quot;headphones&quot;, &quot;phone case&quot;}}
+    kabir = write(base, &quot;mumbai&quot;, base[&quot;items&quot;] | {&quot;charger&quot;})        # [4, 2]
+    sara = write(base, &quot;london&quot;, base[&quot;items&quot;] - {&quot;headphones&quot;})      # [3, 3]
+    removed = base[&quot;items&quot;] - sara[&quot;items&quot;]
+    merge = lambda x, y: (x | y) - removed    # app-level merge: keep adds, honour removes
+    result = reconcile(kabir, sara, &quot;mumbai&quot;, merge)
+    print(f&quot;CART     {kabir[&#x27;vv&#x27;]} vs {sara[&#x27;vv&#x27;]}: {vv_compare(kabir[&#x27;vv&#x27;], sara[&#x27;vv&#x27;])}&quot;
+          f&quot; -&gt; merged {sorted(result[&#x27;items&#x27;])} at {result[&#x27;vv&#x27;]}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    wall_clock_problem()
+    lamport_demo()
+    vector_demo()
+    cart_demo()
+</code></pre>
+</section>
+<section id="output">
+<h2>Output when you run it</h2>
+<pre class="out"><code>PROBLEM  10:00:00.008 payment  refund
+PROBLEM  10:00:00.010 order    cancel
+LAMPORT  5 order    cancel
+LAMPORT  7 payment  refund
+VECTOR   cancel [2, 0, 0] vs refund [2, 2, 0]: before
+VECTOR   refund [2, 2, 0] vs slip [1, 0, 2]: concurrent
+VECTOR   slip is concurrent with cancel -&gt; check order state before shipping
+CART     {&#x27;mumbai&#x27;: 4, &#x27;london&#x27;: 2} vs {&#x27;mumbai&#x27;: 3, &#x27;london&#x27;: 3}: concurrent -&gt; merged [&#x27;charger&#x27;, &#x27;phone case&#x27;] at {&#x27;mumbai&#x27;: 5, &#x27;london&#x27;: 3}
+</code></pre>
+</section>
+<footer class="foot">From the Hindi series Decode System Design on YouTube, channel @DecodeWithVipin1306.</footer>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script>
+try { hljs.highlightElement(document.getElementById('code-src')); } catch (e) {}
+const btn=document.getElementById('copy-btn');
+btn.addEventListener('click',()=>{
+  const text=document.getElementById('code-src').innerText;
+  const done=()=>{btn.textContent='Copied';setTimeout(()=>btn.textContent='Copy code',1600);};
+  const fallback=()=>{const r=document.createRange();r.selectNodeContents(document.getElementById('code-src'));const s=getSelection();s.removeAllRanges();s.addRange(r);btn.textContent='Selected, press Ctrl+C';};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,fallback);}else fallback();
+});
+</script>
