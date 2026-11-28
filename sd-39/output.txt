@@ -1,0 +1,6 @@
+PROBLEM  acks=1 + no wait: "confirmed" is returned before any other copy exists (see problem/FireAndForgetProducer)
+SOLUTION topic order-assignments: 6 partitions, 3 copies each, min.insync.replicas=2, unclean.leader.election.enable=false
+SOLUTION partition 0: leader broker 2, copies on [2, 0, 1], in-sync [2, 0, 1]
+SOLUTION producer: acks=all, enable.idempotence=true
+SOLUTION order-501 -> Pune acked (partition 3, offset 0) -> confirmed
+SOLUTION order-502 -> Mumbai acked (partition 3, offset 1) -> confirmed
