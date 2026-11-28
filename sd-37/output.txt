@@ -1,0 +1,36 @@
+$ curl -s localhost:8080/actuator/health/liveness
+{"status":"UP","components":{"livenessState":{"status":"UP"}}}
+
+$ curl -s localhost:8080/actuator/health/readiness
+{"status":"UP","components":{"readinessState":{"status":"UP"},"warehouseQueue":{"status":"UP","details":{"pending":0}}}}
+
+$ curl -s -X POST 'localhost:8080/orders?count=5200'
+pending=5200
+
+$ curl -s -w ' (HTTP %{http_code})' localhost:8080/actuator/health/readiness
+{"status":"OUT_OF_SERVICE","components":{"readinessState":{"status":"UP"},"warehouseQueue":{"status":"OUT_OF_SERVICE","details":{"pending":5200,"max":5000}}}} (HTTP 503)
+
+$ curl -s localhost:8080/actuator/health/liveness
+{"status":"UP","components":{"livenessState":{"status":"UP"}}}
+
+$ curl -s -X POST 'localhost:8080/packed?count=1000'
+pending=4200
+
+$ curl -s -w ' (HTTP %{http_code})' localhost:8080/actuator/health/readiness
+{"status":"UP","components":{"readinessState":{"status":"UP"},"warehouseQueue":{"status":"UP","details":{"pending":4200}}}} (HTTP 200)
+
+$ curl -s -X POST 'localhost:8080/admin/maintenance?on=true'
+refusing new orders
+
+$ curl -s -w ' (HTTP %{http_code})' localhost:8080/actuator/health/readiness
+{"status":"OUT_OF_SERVICE","components":{"readinessState":{"status":"OUT_OF_SERVICE"},"warehouseQueue":{"status":"UP","details":{"pending":4200}}}} (HTTP 503)
+
+$ curl -s localhost:8080/actuator/health/liveness
+{"status":"UP","components":{"livenessState":{"status":"UP"}}}
+
+$ curl -s -X POST 'localhost:8080/admin/maintenance?on=false'
+accepting new orders
+
+$ curl -s -w ' (HTTP %{http_code})' localhost:8080/actuator/health/readiness
+{"status":"UP","components":{"readinessState":{"status":"UP"},"warehouseQueue":{"status":"UP","details":{"pending":4200}}}} (HTTP 200)
+

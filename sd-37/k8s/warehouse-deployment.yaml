@@ -1,0 +1,47 @@
+# Video 37: Kubernetes does the failure detection. Apply: kubectl apply -f warehouse-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: warehouse
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: warehouse }
+  template:
+    metadata:
+      labels: { app: warehouse }
+    spec:
+      containers:
+        - name: warehouse
+          image: decode/warehouse-service:1.0
+          ports:
+            - containerPort: 8080
+          # Slow first start: no liveness checks for up to 30 x 2 s = 60 s
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 2
+            failureThreshold: 30
+          # Stop NEW orders fast: 3 failed checks in a row (about 6 s), one slow reply is not enough
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            periodSeconds: 2
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+          # Restart only when really stuck: 6 x 5 s = 30 s (a long GC pause does not restart it)
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+---
+# The order service calls http://warehouse-service; only READY pods are behind this name.
+apiVersion: v1
+kind: Service
+metadata:
+  name: warehouse-service
+spec:
+  selector: { app: warehouse }
+  ports:
+    - port: 80
+      targetPort: 8080
